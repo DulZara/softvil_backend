@@ -11,6 +11,8 @@ import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
+import static org.springframework.security.config.Customizer.withDefaults;
+
 @Configuration
 @RequiredArgsConstructor
 public class SecurityConfig {
@@ -20,31 +22,20 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
-                // disable CSRF as you’re stateless
+                .cors(withDefaults()) // <-- use withDefaults() instead of .cors()
                 .csrf(csrf -> csrf.disable())
-
-                // no session will be created or used by Spring Security
-                .sessionManagement(sm ->
-                        sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
-
-                // configure URL access rules
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth ->
                         auth
-                                // public endpoints
                                 .requestMatchers("/auth/**", "/actuator/**").permitAll()
-                                .requestMatchers(HttpMethod.GET, "/event/**").permitAll()
-                                // everything else requires authentication
+                                .requestMatchers("/admin/**").hasRole("ADMIN")
                                 .anyRequest().authenticated()
                 )
-
-                // add your JWT filter BEFORE Spring’s username/password filter
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
     }
 
-    // Expose the AuthenticationManager so you can use it in your AuthController
     @Bean
     public AuthenticationManager authenticationManager(
             AuthenticationConfiguration authConfig
